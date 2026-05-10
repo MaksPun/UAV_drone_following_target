@@ -1,0 +1,6 @@
+airsim
+mavsdk
+numpy
+opencv-python
+pygame
+ultralytics

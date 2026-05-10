@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments and local IDE state
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+
+# Local AirSim/PX4 state
+settings.local.json
+*.ulg
+*.log
+
+# Model weights and training outputs
+*.pt
+*.pth
+*.onnx
+*.engine
+runs/
+runs_target_drone_rf/
+
+# Datasets and generated labels/images
+dataset_target_drone_fast_precise/
+yolo_redcube_fast/
+train/
+valid/
+test/
+train_split/
+data.yaml
+dataset_target_drone_fast_precise.yaml
+README.roboflow.txt
+
+# Experiment outputs
+metrics_results/
+thesis_output/
+tools/
+
+# Draft documents and local thesis templates
+*.docx
+*.dotm
+template_bachelor.dotm
+PROJECT_EXPLANATION_FOR_THESIS.md
+
+# Legacy one-file prototypes kept locally only
+legacy/
+px4_yolo_follow.py
+px4_yolo_follow_lqr.py
+px4_yolo_mavsdk_lqr_cube.py
+px4_yolo_mavsdk_pid_cube.py
+px4_yolo_mavsdk_target_drone.py
+collect_target_drone_autolabel_seg.py
+train_yolo_target_drone_fast_precise.py
+test1.py
+test_lqr.py
