@@ -69,7 +69,7 @@ class PIDTracker:
     def step(self, det:Det|None, fshape,
              drone_pose:airsim.Pose, cube_pose:airsim.Pose,
              dt:float, kalman:KalmanCube,
-             lim:SpeedLimits) -> Cmd:
+             lim:SpeedLimits, body_xyz=None) -> Cmd:
         """lim = AdaptiveSpeedManager.update() result"""
 
         if det is None:
@@ -79,10 +79,13 @@ class PIDTracker:
                        vz=self.rvz.update(self.svz.update(0.),dt),
                        yaw=self.ryaw.update(self.syaw.update(0.),dt))
 
-        dx=float(cube_pose.position.x_val-drone_pose.position.x_val)
-        dy=float(cube_pose.position.y_val-drone_pose.position.y_val)
-        dz=float(cube_pose.position.z_val-drone_pose.position.z_val)
-        bx,by,bz=world_to_body(drone_pose,dx,dy,dz)
+        if body_xyz is None:
+            dx=float(cube_pose.position.x_val-drone_pose.position.x_val)
+            dy=float(cube_pose.position.y_val-drone_pose.position.y_val)
+            dz=float(cube_pose.position.z_val-drone_pose.position.z_val)
+            bx,by,bz=world_to_body(drone_pose,dx,dy,dz)
+        else:
+            bx,by,bz=body_xyz
 
         ex =self.f_ex.update( self._db(bx-CFG.target_dist_m, CFG.db_x))
         ey =self.f_ey.update( self._db(by,                   CFG.db_y))

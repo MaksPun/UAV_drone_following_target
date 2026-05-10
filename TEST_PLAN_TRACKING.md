@@ -1,15 +1,12 @@
 # Tracking metric test plan
 
-This project currently measures target distance from AirSim object poses:
+The live tracker estimates target distance from the AirSim `DepthPerspective`
+camera. For each selected YOLO bbox, the code uses the median depth in a
+shrunken ROI and projects it into body-frame `(bx, by, bz)`.
 
-- `drone_pose = client.simGetVehiclePose()`
-- `cube_pose = client.simGetObjectPose(args.cube_name)`
-- body-frame distance is computed from the difference between those poses.
-
-So the live tracker does **not** currently use the built-in depth camera for the
-main distance estimate. The depth benchmark is included to justify this choice
-and to compare possible future estimators: ground-truth pose, ROI median depth,
-center-pixel depth, and inverse bbox size.
+AirSim object pose is used only for simulation services such as moving or
+resetting the target cube during scripted tests. It is not the main distance
+source for PID/LQR tracking.
 
 ## Run all offline metrics
 

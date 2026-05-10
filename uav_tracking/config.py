@@ -18,6 +18,10 @@ class CFG:
     target_dist_m:     float = 12.0
     target_alt_off:    float = 0.0
     aim_y_ratio:       float = 0.55
+    depth_fov_deg:     float = 90.0
+    depth_roi_shrink:  float = 0.65
+    depth_min_m:       float = 0.20
+    depth_max_m:       float = 80.0
 
     # Baseline command limits for slow or static targets.
     base_vx:           float = 2.5

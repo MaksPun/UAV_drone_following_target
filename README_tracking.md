@@ -26,13 +26,9 @@ This file is a compact technical note. The main setup and launch instructions ar
 
 ## Distance Estimate
 
-During live AirSim tracking the main distance estimate is computed from AirSim poses:
+During live tracking the main distance estimate is computed from the AirSim `DepthPerspective` camera inside the selected YOLO bounding box. The ROI median depth is projected into an approximate drone body-frame vector `(bx, by, bz)` using the camera field of view and the target center in the image.
 
-- drone pose: `simGetVehiclePose()`;
-- target pose: `simGetObjectPose(cube_name)`;
-- body-frame distance: transformed world delta between target and drone.
-
-The depth camera is used for visualization and for separate validation tests. This is intentional: AirSim pose gives stable simulation ground truth, while depth ROI tests show how the system could move toward a real sensor-based distance estimate.
+AirSim object pose is still used for scripted target motion and reset operations in metric scenarios, but PID/LQR control and live tracking metrics no longer use target pose as the distance source.
 
 ## Reacquisition
 

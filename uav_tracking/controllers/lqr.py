@@ -81,7 +81,7 @@ class LQRTracker:
     def step(self, det:Det|None, fshape,
              drone_pose:airsim.Pose, cube_pose:airsim.Pose,
              dt:float, kalman:KalmanCube,
-             lim:SpeedLimits) -> Cmd:
+             lim:SpeedLimits, body_xyz=None) -> Cmd:
         """lim = AdaptiveSpeedManager.update() result"""
 
         if det is None:
@@ -94,10 +94,15 @@ class LQRTracker:
         if CFG.lqr_adaptive_dt:
             self._refresh_gains(dt)
 
-        dx=float(cube_pose.position.x_val-drone_pose.position.x_val)
-        dy=float(cube_pose.position.y_val-drone_pose.position.y_val)
-        dz=float(cube_pose.position.z_val-drone_pose.position.z_val)
-        bx,by,bz=world_to_body(drone_pose,dx,dy,dz)
+        if body_xyz is None:
+            dx=float(cube_pose.position.x_val-drone_pose.position.x_val)
+            dy=float(cube_pose.position.y_val-drone_pose.position.y_val)
+            dz=float(cube_pose.position.z_val-drone_pose.position.z_val)
+            bx,by,bz=world_to_body(drone_pose,dx,dy,dz)
+            dist=math.sqrt(dx*dx+dy*dy+dz*dz)
+        else:
+            bx,by,bz=body_xyz
+            dist=math.sqrt(bx*bx+by*by+bz*bz)
 
         ex_r =self._db(bx-CFG.target_dist_m, CFG.db_x)
         ey_r =self._db(by,                   CFG.db_y)
@@ -130,7 +135,6 @@ class LQRTracker:
         uyaw = self._lqr1(self.Kyaw, exi_h, dexi)
         uzi  = self._lqr1(self.Kzi,  eyi_h, deyi)
 
-        dist=math.sqrt(dx*dx+dy*dy+dz*dz)
         if dist>1.2 and edge<.95:
             self.ix=clamp(self.ix+ex_h*dt,-CFG.int_max,CFG.int_max)
             self.iz=clamp(self.iz+ez_h*dt,-CFG.int_max,CFG.int_max)

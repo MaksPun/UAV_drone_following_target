@@ -106,6 +106,7 @@ class MetricsLogger:
             img_y = ""
             track_id = ""
             conf = ""
+        valid_body = target is not None
         rb_yaw, rb_vy, rb_vz, rb_fx, rb_edge = reacq.return_bias
         self._writer.writerow({
             "wall_time": now,
@@ -123,13 +124,13 @@ class MetricsLogger:
             "conf": conf,
             "img_x": img_x,
             "img_y": img_y,
-            "bx": bx,
-            "by": by,
-            "bz": bz,
-            "dist": dist,
-            "dist_err": bx - CFG.target_dist_m,
-            "lat_err": by,
-            "alt_err": bz - CFG.target_alt_off,
+            "bx": bx if valid_body else "",
+            "by": by if valid_body else "",
+            "bz": bz if valid_body else "",
+            "dist": dist if valid_body else "",
+            "dist_err": bx - CFG.target_dist_m if valid_body else "",
+            "lat_err": by if valid_body else "",
+            "alt_err": bz - CFG.target_alt_off if valid_body else "",
             "cmd_vx": cmd.vx,
             "cmd_vy": cmd.vy,
             "cmd_vz": cmd.vz,

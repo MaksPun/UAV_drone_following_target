@@ -41,3 +41,20 @@ def world_to_body(pose: airsim.Pose, vx, vy, vz):
     R  = quat_to_R(float(q.w_val),float(q.x_val),float(q.y_val),float(q.z_val))
     vb = R.T @ np.array([float(vx),float(vy),float(vz)])
     return float(vb[0]), float(vb[1]), float(vb[2])
+
+def body_to_world(pose: airsim.Pose, bx, by, bz):
+    q = pose.orientation
+    R = quat_to_R(float(q.w_val), float(q.x_val), float(q.y_val), float(q.z_val))
+    vw = R @ np.array([float(bx), float(by), float(bz)])
+    return float(vw[0]), float(vw[1]), float(vw[2])
+
+def pose_from_body_offset(pose: airsim.Pose, bx, by, bz):
+    wx, wy, wz = body_to_world(pose, bx, by, bz)
+    out = airsim.Pose()
+    out.position = airsim.Vector3r(
+        float(pose.position.x_val) + wx,
+        float(pose.position.y_val) + wy,
+        float(pose.position.z_val) + wz,
+    )
+    out.orientation = pose.orientation
+    return out

@@ -15,7 +15,7 @@ import cv2
 import pygame
 
 from .airsim_scenarios import SCENARIO_NAMES, ScenarioState
-from .common import Cmd, CubeCmd, clamp, world_to_body
+from .common import Cmd, CubeCmd, clamp, pose_from_body_offset
 from .config import CFG
 from .controllers import LQRTracker, PIDTracker
 from .estimation import BodyMotionTracker, ImageMotionTracker, KalmanCube, SpatialGrid27
@@ -26,7 +26,7 @@ from .safety import SafetyMonitor
 from .simulation import move_cube
 from .speed import AdaptiveSpeedManager
 from .vehicle import MavsdkVehicle
-from .vision import Det, YoloDetector, get_depth_m, get_scene_bgr
+from .vision import Det, YoloDetector, estimate_body_from_depth, get_depth_m, get_scene_bgr
 
 logging.basicConfig(
     level=logging.INFO,
@@ -259,7 +259,7 @@ async def async_main():
         frame=get_scene_bgr(client,args.cam)
         if frame is None: clock.tick(30); await asyncio.sleep(0); continue
 
-        if args.hud_style=="operator" and now-last_depth_t>=0.35:
+        if now-last_depth_t>=0.12:
             try:
                 depth_frame=get_depth_m(client,args.cam)
             except Exception as exc:
@@ -274,8 +274,6 @@ async def async_main():
             last_infer_t=now
 
         drone_pose=client.simGetVehiclePose()
-        cube_pose =client.simGetObjectPose(args.cube_name)
-        kalman.update(cube_pose,now)
 
         # Metric options can emulate detector noise, latency and occlusion.
         scenario_t = scenario.elapsed(now) if scenario.enabled else 0.0
@@ -286,12 +284,28 @@ async def async_main():
         )
         current_target = None if forced_occlusion else last_det
         current_target = jitter_detection(current_target, args.metrics_det_noise_px, noise_rng, frame.shape)
-        measurement_history.append({"t": now, "target": current_target, "cube_pose": cube_pose})
+        body_est=estimate_body_from_depth(
+            current_target,depth_frame,frame.shape,CFG.depth_fov_deg,CFG.depth_roi_shrink,
+            CFG.depth_min_m,CFG.depth_max_m)
+        est_cube_pose=None
+        if body_est is not None:
+            bx,by,bz,dist=body_est
+            est_cube_pose=pose_from_body_offset(drone_pose,bx,by,bz)
+            kalman.update(est_cube_pose,now)
+        else:
+            bx=by=bz=dist=0.0
+        measurement_history.append({
+            "t": now,
+            "target": current_target if est_cube_pose is not None else None,
+            "cube_pose": est_cube_pose,
+            "body_xyz": (bx,by,bz) if est_cube_pose is not None else None,
+        })
         if len(measurement_history) > 240:
             measurement_history = measurement_history[-240:]
         control_measurement = delayed_measurement(measurement_history, now, args.metrics_latency_ms / 1000.0)
         target = control_measurement["target"]
         control_cube_pose = control_measurement["cube_pose"]
+        control_body_xyz = control_measurement["body_xyz"]
         if target is not None:
             last_ctrl_det_t = now
         lost_s=now-last_ctrl_det_t if last_ctrl_det_t>0 else 9999.
@@ -303,15 +317,12 @@ async def async_main():
             hud_logs.append(f"{time.strftime('%H:%M:%S')} WARN  Target lost")
         last_target_visible=target_visible
 
-        dp=drone_pose.position; cp=cube_pose.position
-        dx=float(cp.x_val-dp.x_val); dy=float(cp.y_val-dp.y_val)
-        dz=float(cp.z_val-dp.z_val)
-        bx,by,bz=world_to_body(drone_pose,dx,dy,dz)
-        dist=math.sqrt(dx*dx+dy*dy+dz*dz); z_now=float(drone_pose.position.z_val)
+        z_now=float(drone_pose.position.z_val)
 
-        grid27.push(bx,by,bz,now)
-        body_hist.push(bx,by,bz,now)
-        if target is not None: imt.push(target,frame.shape,now)
+        if body_est is not None:
+            grid27.push(bx,by,bz,now)
+            body_hist.push(bx,by,bz,now)
+        if current_target is not None: imt.push(current_target,frame.shape,now)
 
         lim = asp.update(kalman, target,
                          frame.shape if target is not None else None,
@@ -328,10 +339,12 @@ async def async_main():
         elif mode in("AUTO","AUTO_CUBE"):
             if target is not None and lost_s<0.16:
                 if args.ctrl=="pid":
-                    cmd=pid_tracker.step(target,frame.shape,drone_pose,control_cube_pose,dt,kalman,lim)
+                    cmd=pid_tracker.step(target,frame.shape,drone_pose,control_cube_pose,dt,kalman,lim,
+                                         body_xyz=control_body_xyz)
                     lqr_tracker.reset()
                 else:
-                    cmd=lqr_tracker.step(target,frame.shape,drone_pose,control_cube_pose,dt,kalman,lim)
+                    cmd=lqr_tracker.step(target,frame.shape,drone_pose,control_cube_pose,dt,kalman,lim,
+                                         body_xyz=control_body_xyz)
                     pid_tracker.reset()
                 reacq.reset()
             else:
@@ -367,7 +380,7 @@ async def async_main():
 
         await vehicle.send(cmd)
         if metrics is not None:
-            metrics.row(now=now,mode=mode,target=current_target,frame_shape=frame.shape,
+            metrics.row(now=now,mode=mode,target=current_target if body_est is not None else None,frame_shape=frame.shape,
                         lost_s=lost_s,reacq=reacq,bx=bx,by=by,bz=bz,dist=dist,
                         cmd=cmd,lim=lim,cube_cmd=cube_cmd)
         seq+=1
@@ -380,8 +393,8 @@ async def async_main():
             err_x=0.0; err_y=0.0; img_err=0.0
         hud_history.append({
             "t": now-app_start_t,
-            "visible": current_target is not None,
-            "dist_err_m": dist-CFG.target_dist_m,
+            "visible": body_est is not None,
+            "dist_err_m": dist-CFG.target_dist_m if body_est is not None else None,
             "err_x_px": err_x,
             "err_y_px": err_y,
             "img_err_px": img_err,
