@@ -1,3 +1,5 @@
+"""Command-line entry point for the live AirSim tracker."""
+
 import sys
 from pathlib import Path
 

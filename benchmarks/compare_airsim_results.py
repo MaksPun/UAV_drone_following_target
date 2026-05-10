@@ -1,3 +1,5 @@
+"""Compares PID and LQR results from the base live AirSim suite."""
+
 from __future__ import annotations
 
 import argparse

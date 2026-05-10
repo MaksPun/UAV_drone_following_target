@@ -1,3 +1,5 @@
+"""Shortcut entry point that starts the tracker in PID mode."""
+
 import sys
 from pathlib import Path
 

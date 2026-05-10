@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""AirSim camera capture and YOLO/ByteTrack detection wrapper."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -45,6 +47,7 @@ class YoloDetector:
 
     def infer(self, frame) -> list[Det]:
         if frame is None: return []
+        # Ultralytics handles both plain detection and ByteTrack-backed tracking.
         kw=dict(source=frame,imgsz=self.imgsz,conf=self.conf,
                 iou=self.iou,device=self.device,verbose=False)
         res=(self.model.track(**kw,tracker="bytetrack.yaml",persist=True)
@@ -63,6 +66,7 @@ class YoloDetector:
         return out
 
     def pick(self, dets: list[Det]) -> Det | None:
+        # Keep the same ByteTrack ID when possible; otherwise choose the strongest box.
         if not dets: self.sel_id=None; return None
         if self.bytetrack and self.sel_id is not None:
             same=[d for d in dets if d.track_id==self.sel_id]

@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Predictive return-to-frame logic for temporary target loss."""
+
+from __future__ import annotations
 
 import math
 from dataclasses import dataclass
@@ -25,6 +27,7 @@ class ReacqMode(Enum):
 
 class ReacquireFSM:
     def decide(self,lost_s,imt,body_hist,drone_pose,kalman)->ReacqMode:
+        # The FSM escalates from short prediction to wider search as loss time grows.
         yaw_priority=False
         if kalman.ok:
             pred_pos,_=kalman.predict(ahead=min(lost_s+.35,1.3))
@@ -63,6 +66,7 @@ class PredictiveReacq:
         self.return_bias=(0.,0.,0.,1.,0.)
 
     def _mix(self,drone_pose,kalman,grid27,body_hist,lost_s):
+        # Multiple weak predictors are blended instead of trusting one noisy source.
         preds=[]
         if kalman.ok:
             pp,_=kalman.predict(ahead=min(lost_s+.40,2.0))
@@ -124,6 +128,7 @@ class PredictiveReacq:
         return min(raw_vz,-fc)
 
     def _image_return_bias(self,imt,lost_s,rvy,rvz,ryy):
+        # Last image motion adds a direct bias back toward the frame area where the target left.
         pred=imt.predict_img(ahead=clamp(lost_s+.18,.18,.85))
         if pred is None:
             pred=imt.last_pos

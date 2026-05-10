@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Central tuning file for flight limits, controllers and reacquisition."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 

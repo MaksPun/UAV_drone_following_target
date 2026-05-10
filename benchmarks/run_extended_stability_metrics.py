@@ -1,3 +1,5 @@
+"""Offline robustness experiments for noise, latency, speed and occlusion."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,3 +1,5 @@
+"""Offline controller comparison for PID and LQR."""
+
 from __future__ import annotations
 
 import argparse

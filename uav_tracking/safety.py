@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Simple safety checks for altitude and geofence limits."""
+
+from __future__ import annotations
 
 import math
 

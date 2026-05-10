@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""CSV logger for live AirSim tracking metrics."""
+
+from __future__ import annotations
 
 import csv
 import math
@@ -55,6 +57,8 @@ METRIC_FIELDS = [
 
 
 class MetricsLogger:
+    """Writes one CSV row per control frame for later PID/LQR comparison."""
+
     def __init__(
         self,
         path,
@@ -88,6 +92,7 @@ class MetricsLogger:
 
     def row(self, *, now, mode, target, frame_shape, lost_s, reacq, bx, by, bz,
             dist, cmd, lim, cube_cmd):
+        # Keep raw values explicit so logs can be re-analyzed without rerunning AirSim.
         h = w = None
         if frame_shape is not None:
             h, w = frame_shape[:2]

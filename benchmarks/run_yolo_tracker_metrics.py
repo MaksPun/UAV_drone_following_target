@@ -1,3 +1,5 @@
+"""Offline YOLO selection and ByteTrack stability benchmark."""
+
 from __future__ import annotations
 
 import argparse

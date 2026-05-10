@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Scripted target motion profiles used by repeatable AirSim metric runs."""
+
+from __future__ import annotations
 
 import math
 from dataclasses import dataclass
@@ -32,6 +34,8 @@ class CubeCmd:
 
 @dataclass
 class ScenarioState:
+    """Stateful scenario generator used by metric-suite scripts."""
+
     name: str = "manual"
     started_at: float | None = None
     enabled: bool = False

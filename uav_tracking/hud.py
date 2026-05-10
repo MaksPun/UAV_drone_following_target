@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""OpenCV/Pygame HUD rendering for classic and operator dashboard views."""
+
+from __future__ import annotations
 
 import math
 
@@ -12,6 +14,7 @@ from .vision import Det
 
 
 def draw_hud(img, lines, det: Det | None, lim: SpeedLimits, asp: "AdaptiveSpeedManager"):
+    """Compact legacy overlay used when --hud_style classic is selected."""
     H, W = img.shape[:2]
     for r in range(3):
         for c in range(3):
@@ -282,6 +285,7 @@ def draw_operator_hud(
     seq=0,
     safety_status="OK",
 ):
+    """Render the thesis/demo dashboard as a single BGR frame."""
     history = list(history or [])
     logs = list(logs or [])
     H, W = 900, 1400

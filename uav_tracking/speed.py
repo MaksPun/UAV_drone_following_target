@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Adaptive command limit manager shared by PID and LQR controllers."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -56,6 +58,7 @@ class AdaptiveSpeedManager:
             cube_acc = float(np.linalg.norm(kalman.acc))
 
         self.cube_speed_ms = cube_spd
+        # A single scale combines target speed and acceleration.
         spd_scale = min(
             1.0,
             cube_spd / max(CFG.cube_v_ref, 0.1) * 0.70

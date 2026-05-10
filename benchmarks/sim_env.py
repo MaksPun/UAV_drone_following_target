@@ -1,3 +1,5 @@
+"""Small deterministic simulation helpers used by offline benchmarks."""
+
 from __future__ import annotations
 
 import math

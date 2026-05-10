@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Main application loop for AirSim, YOLO, controllers, HUD and metrics."""
+
+from __future__ import annotations
 
 import argparse
 import asyncio
@@ -157,6 +159,7 @@ async def async_main():
                     help="Visual UI style. operator is the dashboard HUD shown during experiments.")
     args=ap.parse_args()
 
+    # Runtime blocks are created once and reused every frame.
     detector  = YoloDetector(args.weights,args.imgsz,args.conf,
                               args.iou,args.device,args.bytetrack)
     pid_tracker = PIDTracker()
@@ -265,6 +268,7 @@ async def async_main():
                 log.debug("Depth frame unavailable: %s", exc)
             last_depth_t=now
 
+        # YOLO is rate-limited so control and HUD rendering stay responsive.
         if now-last_infer_t>=1./max(args.infer_hz,1e-3):
             dets=detector.infer(frame); last_det=detector.pick(dets)
             last_infer_t=now
@@ -273,6 +277,7 @@ async def async_main():
         cube_pose =client.simGetObjectPose(args.cube_name)
         kalman.update(cube_pose,now)
 
+        # Metric options can emulate detector noise, latency and occlusion.
         scenario_t = scenario.elapsed(now) if scenario.enabled else 0.0
         forced_occlusion = (
             args.metrics_occlusion_start >= 0.0
@@ -330,6 +335,7 @@ async def async_main():
                     pid_tracker.reset()
                 reacq.reset()
             else:
+                # Reacquisition takes over when visual detection is temporarily lost.
                 cmd=reacq.step(drone_pose,kalman,grid27,imt,body_hist,reacq_fsm,now,dt)
                 pid_tracker.reset(); lqr_tracker.reset()
 

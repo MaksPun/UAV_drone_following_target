@@ -1,3 +1,5 @@
+"""Offline comparison of target reacquisition policies."""
+
 from __future__ import annotations
 
 import argparse

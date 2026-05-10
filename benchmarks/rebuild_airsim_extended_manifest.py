@@ -1,3 +1,5 @@
+"""Rebuilds the extended AirSim manifest from generated CSV logs."""
+
 from __future__ import annotations
 
 import argparse

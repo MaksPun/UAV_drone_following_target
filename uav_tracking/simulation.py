@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Small AirSim helpers for moving the target object in scenarios."""
+
+from __future__ import annotations
 
 import airsim
 

@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""PID visual tracker with filtering, feed-forward and command shaping."""
+
+from __future__ import annotations
 
 import math
 
@@ -13,6 +15,7 @@ from ..vision import Det
 
 
 class PIDAxis:
+    """One filtered PID channel with optional integral limiting."""
     def __init__(self, kp, ki, kd, int_limit, d_alpha=None):
         self.kp=float(kp); self.ki=float(ki); self.kd=float(kd)
         self.int_limit=float(int_limit); self.i=0.; self.last_e=None
@@ -88,6 +91,7 @@ class PIDTracker:
         exi=self.f_exi.update(self._db((det.cx-w*.5)/(w*.5),             CFG.db_exi))
         eyi=self.f_eyi.update(self._db((det.cy-h*CFG.aim_y_ratio)/(h*.5),CFG.db_eyi))
 
+        # Image-edge gain makes yaw/lateral/vertical response stronger near frame borders.
         edge_x=clamp((abs(exi)-0.15)/0.85,0.,1.)
         edge_y=clamp((abs(eyi)-0.15)/0.85,0.,1.)
         edge=max(edge_x,edge_y)
@@ -102,6 +106,7 @@ class PIDTracker:
         uyaw=self.pid_yaw.step(exi,dt)
         uzi =self.pid_imgz.step(eyi,dt)
 
+        # Target velocity from Kalman is used only as a bounded feed-forward term.
         ff_x=ff_y=ff_z=ff_yaw=0.
         if kalman.ok:
             vw=kalman.vel; aw=kalman.acc; vw_p=vw+aw*.10

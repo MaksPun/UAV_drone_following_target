@@ -1,3 +1,5 @@
+"""Builds one compact report file from extended AirSim metric outputs."""
+
 from __future__ import annotations
 
 import argparse

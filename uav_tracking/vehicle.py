@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""MAVSDK wrapper around PX4 arm, takeoff, offboard and landing actions."""
+
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -18,6 +20,8 @@ class DroneState(Enum):
     TAKEOFF=auto(); OFFBOARD=auto(); LANDING=auto(); FAULT=auto()
 
 class MavsdkVehicle:
+    """Small async wrapper that hides MAVSDK setup and offboard boilerplate."""
+
     def __init__(self): self.drone=System(); self.state=DroneState.IDLE; self.offboard_ok=False
     async def connect(self,addr:str):
         self.state=DroneState.CONNECTING; log.info("Connecting -> %s",addr)
@@ -49,6 +53,7 @@ class MavsdkVehicle:
             self.state=DroneState.FAULT; log.error("Offboard: %s",e._result.result); raise
     async def send(self,cmd:Cmd):
         if not self.offboard_ok: return
+        # PX4 expects body-frame velocity and yaw-rate setpoints in offboard mode.
         await self.drone.offboard.set_velocity_body(
             VelocityBodyYawspeed(float(cmd.vx),float(cmd.vy),float(cmd.vz),float(cmd.yaw)))
     async def hold(self): await self.send(Cmd())

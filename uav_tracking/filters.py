@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Lightweight filters, slew limiters and LQR helper math."""
+
+from __future__ import annotations
 
 import numpy as np
 

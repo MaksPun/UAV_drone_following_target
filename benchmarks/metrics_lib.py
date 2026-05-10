@@ -1,3 +1,5 @@
+"""Shared helpers for CSV, Markdown and offline benchmark statistics."""
+
 from __future__ import annotations
 
 import csv

@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""LQR visual tracker with observer, integral correction and feed-forward."""
+
+from __future__ import annotations
 
 import math
 
@@ -73,6 +75,7 @@ class LQRTracker:
         self.Kzi  = make_K(dt_d,qzi,qvzi,rzi)
 
     def _lqr1(self, K, e, de) -> float:
+        # The state is only [error, error_rate], which keeps the online controller light.
         return -float((K @ np.array([[e],[de]])).item())
 
     def step(self, det:Det|None, fshape,
@@ -136,6 +139,7 @@ class LQRTracker:
             self.iz*=CFG.int_decay_locked
         ux-=CFG.ki_x*self.ix; uz-=CFG.ki_z*self.iz
 
+        # Feed-forward helps follow moving targets without increasing feedback gains.
         ff_x=ff_y=ff_z=ff_yaw=0.
         if kalman.ok:
             vw=kalman.vel; aw=kalman.acc; vw_p=vw+aw*.10
@@ -170,6 +174,7 @@ class LQRTracker:
         if z_now>-CFG.alt_floor_m and raw_vz>0.: raw_vz=0.
         if z_now>-CFG.alt_floor_m+.3:            raw_vz=min(raw_vz,-.28)
 
+        # Near the lock zone, commands are damped to avoid visible oscillation.
         locked=(abs(ex_h)<CFG.lock_near_m and abs(ey_h)<CFG.lock_near_y
                 and abs(ez_h)<CFG.lock_near_z
                 and abs(exi_h)<CFG.lock_near_xi and abs(eyi_h)<CFG.lock_near_yi)

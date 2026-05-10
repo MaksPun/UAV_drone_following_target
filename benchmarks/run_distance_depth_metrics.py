@@ -1,3 +1,5 @@
+"""Offline comparison of distance estimation methods."""
+
 from __future__ import annotations
 
 import argparse

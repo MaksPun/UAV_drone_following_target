@@ -1,3 +1,5 @@
+"""Aggregates live AirSim CSV logs into summary tables."""
+
 from __future__ import annotations
 
 import argparse

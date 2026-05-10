@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""State and motion estimators used by tracking and reacquisition."""
+
+from __future__ import annotations
 
 from collections import deque
 
@@ -11,6 +13,7 @@ from .vision import Det
 
 
 class KalmanCube:
+    """Constant-acceleration Kalman model for the target object in world frame."""
     def __init__(self):
         ps=CFG.kalman_proc; ms=CFG.kalman_meas
         self._ps=ps; self._ms=ms
@@ -57,6 +60,7 @@ class KalmanCube:
 #  27-zone spatial predictor
 
 class SpatialGrid27:
+    """Compact 3x3x3 memory of recent target locations in the drone body frame."""
     N=27
     def __init__(self):
         self._T=np.ones((self.N,self.N))*0.1
@@ -120,6 +124,7 @@ class SpatialGrid27:
 #  Motion trackers
 
 class ImageMotionTracker:
+    """Tracks normalized bbox-center motion for frame-exit prediction."""
     def __init__(self):
         self._buf:deque=deque(maxlen=CFG.img_hist)
         self.vx_img=0.; self.vy_img=0.
@@ -169,6 +174,7 @@ class ImageMotionTracker:
     def last_pos(self): return self._last_pos
 
 class BodyMotionTracker:
+    """Tracks body-frame target motion for short-horizon prediction."""
     def __init__(self):
         self._buf:deque=deque(maxlen=CFG.body_hist_n)
 

@@ -1,3 +1,5 @@
+"""Live AirSim test for comparing depth ROI and pose-based distance."""
+
 from __future__ import annotations
 
 import argparse

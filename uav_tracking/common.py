@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Small shared math helpers and command data structures."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 

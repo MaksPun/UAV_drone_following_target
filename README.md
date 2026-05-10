@@ -4,6 +4,50 @@ Python project for visual target tracking with a simulated UAV in AirSim/PX4 SIT
 
 The code was refactored from a single experimental script into a small package so that the control loop, controllers, estimators, reacquisition logic, HUD and metrics can be maintained independently.
 
+## Visual Overview
+
+The main runtime loop is built as a closed visual-servoing pipeline:
+
+```mermaid
+flowchart LR
+    A["AirSim RGB / Depth camera"] --> B["YOLO detection"]
+    B --> C["Optional ByteTrack ID tracking"]
+    C --> D["State estimation and motion history"]
+    D --> E{"Controller"}
+    E -->|PID| F["Velocity and yaw commands"]
+    E -->|LQR| F
+    D --> G["Predictive reacquisition"]
+    G --> F
+    F --> H["MAVSDK Offboard"]
+    H --> I["PX4 SITL"]
+    I --> J["AirSim drone motion"]
+    J --> A
+```
+
+The repository is intentionally split into small modules:
+
+```mermaid
+flowchart TB
+    App["uav_tracking/app.py<br/>main runtime loop"]
+    Vision["vision.py<br/>AirSim frames + YOLO"]
+    Ctrl["controllers/<br/>PID and LQR"]
+    Est["estimation.py<br/>Kalman + motion history"]
+    Reacq["reacquisition.py<br/>target return logic"]
+    Speed["speed.py<br/>adaptive limits"]
+    Hud["hud.py<br/>operator dashboard"]
+    Metrics["metrics.py<br/>CSV logs"]
+    Vehicle["vehicle.py<br/>MAVSDK wrapper"]
+
+    App --> Vision
+    App --> Ctrl
+    App --> Est
+    App --> Reacq
+    App --> Speed
+    App --> Hud
+    App --> Metrics
+    App --> Vehicle
+```
+
 ## What Is Implemented
 
 - YOLO-based target detection with optional ByteTrack tracking.
@@ -51,6 +95,11 @@ benchmarks/
 - PX4 SITL configured to connect to AirSim
 - A trained YOLO model, for example `runs/detect/train4/weights/best.pt`
 - CUDA-capable GPU is recommended for real-time YOLO inference, but CPU can be used for slower tests.
+
+Official AirSim setup references:
+
+- [AirSim custom Unreal environment guide](https://microsoft.github.io/AirSim/unreal_custenv/)
+- [AirSim Windows build guide](https://microsoft.github.io/AirSim/build_windows/)
 
 Python dependencies are listed in `requirements.txt`.
 
