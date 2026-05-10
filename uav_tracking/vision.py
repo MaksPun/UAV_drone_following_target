@@ -26,6 +26,29 @@ def get_depth_m(client: airsim.MultirotorClient, cam: str):
     return depth
 
 
+@dataclass
+class BodyEstimate:
+    bx: float
+    by: float
+    bz: float
+    dist: float
+    source: str
+    valid_px: int = 0
+
+
+def project_detection_to_body(det: "Det", frame_shape, fov_deg: float, forward_m: float,
+                              source: str, valid_px: int = 0) -> BodyEstimate:
+    fh, fw = frame_shape[:2]
+    hfov = np.deg2rad(float(fov_deg))
+    fx = (fw * 0.5) / max(1e-6, np.tan(hfov * 0.5))
+    fy = fx
+    bx = float(forward_m)
+    by = ((float(det.cx) - fw * 0.5) / fx) * bx
+    bz = ((float(det.cy) - fh * 0.5) / fy) * bx
+    dist = float(np.sqrt(bx * bx + by * by + bz * bz))
+    return BodyEstimate(bx, by, bz, dist, source, int(valid_px))
+
+
 def estimate_body_from_depth(det: "Det | None", depth, frame_shape, fov_deg: float, roi_shrink: float,
                              min_m: float, max_m: float):
     if det is None or depth is None or frame_shape is None:
@@ -36,23 +59,30 @@ def estimate_body_from_depth(det: "Det | None", depth, frame_shape, fov_deg: flo
     sx, sy = dw / max(1, fw), dh / max(1, fh)
     dx1, dy1, dx2, dy2 = int(x1 * sx), int(y1 * sy), int(x2 * sx), int(y2 * sy)
     cx, cy = 0.5 * (dx1 + dx2), 0.5 * (dy1 + dy2)
-    rw = max(2, int((dx2 - dx1) * max(0.1, min(1.0, roi_shrink)) * 0.5))
-    rh = max(2, int((dy2 - dy1) * max(0.1, min(1.0, roi_shrink)) * 0.5))
-    rx1 = max(0, int(cx - rw)); rx2 = min(dw, int(cx + rw))
-    ry1 = max(0, int(cy - rh)); ry2 = min(dh, int(cy + rh))
-    roi = depth[ry1:ry2, rx1:rx2]
-    valid = roi[np.isfinite(roi) & (roi >= min_m) & (roi <= max_m)]
+    bw = max(2, dx2 - dx1)
+    bh = max(2, dy2 - dy1)
+
+    valid = np.array([], dtype=np.float32)
+    for scale in (roi_shrink, 1.0, 1.45, 2.0):
+        rw = max(2, int(bw * max(0.1, float(scale)) * 0.5))
+        rh = max(2, int(bh * max(0.1, float(scale)) * 0.5))
+        rx1 = max(0, int(cx - rw)); rx2 = min(dw, int(cx + rw))
+        ry1 = max(0, int(cy - rh)); ry2 = min(dh, int(cy + rh))
+        roi = depth[ry1:ry2, rx1:rx2]
+        valid = roi[np.isfinite(roi) & (roi >= min_m) & (roi <= max_m)]
+        if valid.size >= 6:
+            break
+
     if valid.size < 6:
+        ccx = max(0, min(dw - 1, int(cx)))
+        ccy = max(0, min(dh - 1, int(cy)))
+        patch = depth[max(0, ccy - 3):min(dh, ccy + 4), max(0, ccx - 3):min(dw, ccx + 4)]
+        valid = patch[np.isfinite(patch) & (patch >= min_m) & (patch <= max_m)]
+    if valid.size < 3:
         return None
-    forward = float(np.median(valid))
-    hfov = np.deg2rad(float(fov_deg))
-    fx = (fw * 0.5) / max(1e-6, np.tan(hfov * 0.5))
-    fy = fx
-    bx = forward
-    by = ((float(det.cx) - fw * 0.5) / fx) * forward
-    bz = ((float(det.cy) - fh * 0.5) / fy) * forward
-    dist = float(np.sqrt(bx * bx + by * by + bz * bz))
-    return bx, by, bz, dist
+
+    forward = float(np.percentile(valid, 25))
+    return project_detection_to_body(det, frame_shape, fov_deg, forward, "depth_roi", int(valid.size))
 
 
 #  YOLO

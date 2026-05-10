@@ -26,7 +26,7 @@ from .safety import SafetyMonitor
 from .simulation import move_cube
 from .speed import AdaptiveSpeedManager
 from .vehicle import MavsdkVehicle
-from .vision import Det, YoloDetector, estimate_body_from_depth, get_depth_m, get_scene_bgr
+from .vision import Det, YoloDetector, estimate_body_from_depth, get_depth_m, get_scene_bgr, project_detection_to_body
 
 logging.basicConfig(
     level=logging.INFO,
@@ -212,7 +212,8 @@ async def async_main():
     hud_logs.append(f"{time.strftime('%H:%M:%S')} INFO  Controller: {ctrl_name}")
     hud_logs.append(f"{time.strftime('%H:%M:%S')} INFO  Tracker: YOLO{' + ByteTrack' if args.bytetrack else ''}")
     last_target_visible=False
-    depth_frame=None; last_depth_t=0.0
+    depth_frame=None; last_depth_t=0.0; last_depth_log_t=0.0
+    last_body_est=None; last_body_est_t=0.0
     metrics=None
     if args.metrics_log:
         label=args.metrics_label or f"{args.ctrl}_{args.metrics_scenario}_{int(time.time())}"
@@ -289,7 +290,17 @@ async def async_main():
             CFG.depth_min_m,CFG.depth_max_m)
         est_cube_pose=None
         if body_est is not None:
-            bx,by,bz,dist=body_est
+            last_body_est=body_est
+            last_body_est_t=now
+        elif current_target is not None and last_body_est is not None and now-last_body_est_t<1.2:
+            body_est=project_detection_to_body(
+                current_target,frame.shape,CFG.depth_fov_deg,last_body_est.bx,"last_depth")
+        elif current_target is not None:
+            body_est=project_detection_to_body(
+                current_target,frame.shape,CFG.depth_fov_deg,CFG.target_dist_m,"image_guess")
+
+        if body_est is not None:
+            bx,by,bz,dist=body_est.bx,body_est.by,body_est.bz,body_est.dist
             est_cube_pose=pose_from_body_offset(drone_pose,bx,by,bz)
             kalman.update(est_cube_pose,now)
         else:
@@ -401,8 +412,20 @@ async def async_main():
             "cmd_yaw_dps": cmd.yaw,
         })
         if seq % 30 == 0:
-            hud_logs.append(f"{time.strftime('%H:%M:%S')} INFO  Depth: {dist:.1f} m")
+            src=body_est.source if body_est is not None else "none"
+            hud_logs.append(f"{time.strftime('%H:%M:%S')} INFO  Depth: {dist:.1f} m ({src})")
             hud_logs.append(f"{time.strftime('%H:%M:%S')} INFO  Visible: {current_target is not None}")
+        if now-last_depth_log_t>=2.0:
+            if current_target is None:
+                log.info("Depth estimate: no bbox")
+            elif depth_frame is None:
+                log.warning("Depth estimate: no depth frame")
+            elif body_est is not None:
+                log.info("Depth estimate: %.2f m source=%s valid_px=%s bx=%.2f by=%.2f bz=%.2f",
+                         dist,body_est.source,body_est.valid_px,bx,by,bz)
+            else:
+                log.warning("Depth estimate: failed for bbox=%s",current_target.xyxy)
+            last_depth_log_t=now
 
         intent=reacq.intent
         rb_yaw,rb_vy,rb_vz,rb_fx,rb_edge=reacq.return_bias
